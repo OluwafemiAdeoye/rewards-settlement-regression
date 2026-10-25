@@ -69,13 +69,32 @@ def render(title, cases):
     return "\n".join(lines) + "\n"
 
 
-def publish(markdown):
-    """Print the Markdown and, on GitHub Actions, append it to the job summary."""
+def escape_workflow_data(text):
+    """Escape text for a GitHub Actions workflow command, so it survives as one annotation."""
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def annotate(title, cases):
+    """On GitHub Actions, attach one line per case to the run as a notice, visible on the run page and the API."""
+    if not os.environ.get("GITHUB_ACTIONS"):                                # only inside a GitHub Actions run
+        return
+    passed = sum(1 for case in cases if case[2] == "PASSED")
+    lines = [f"{passed} of {len(cases)} cases passed."]
+    for case_id, _name, status, detail in cases:
+        lines.append(f"{case_id} {status.lower()}" + (f": {detail}" if detail else ""))
+    safe_title = escape_workflow_data(title).replace(":", "%3A").replace(",", "%2C")   # property escaping
+    print(f"::notice title={safe_title}::{escape_workflow_data(chr(10).join(lines))}")
+
+
+def publish(markdown, title=None, cases=None):
+    """Print the Markdown and, on GitHub Actions, append it to the job summary and add a results notice."""
     print(markdown)
     summary_path = os.environ.get("GITHUB_STEP_SUMMARY")                    # set by GitHub Actions
     if summary_path:
         with open(summary_path, "a", encoding="utf-8") as summary:
             summary.write(markdown + "\n")
+    if title is not None and cases is not None:
+        annotate(title, cases)
 
 
 def check_legacy(reports_dir, expected_file):
@@ -88,7 +107,8 @@ def check_legacy(reports_dir, expected_file):
     failed = {case[0] for case in cases if case[2] == "FAILED"}
     errored = {case[0] for case in cases if case[2] == "ERROR"}
 
-    publish(render("Legacy job: DEF-001 reproduction", cases))
+    title = "Legacy job: DEF-001 reproduction"
+    publish(render(title, cases), title, cases)
 
     problems = []
     if errored:
@@ -118,7 +138,8 @@ def main():
     args = parser.parse_args()
 
     if args.command == "summary":
-        publish(render(args.title, load_cases(args.reports_dir)))
+        cases = load_cases(args.reports_dir)
+        publish(render(args.title, cases), args.title, cases)
         return 0
     return check_legacy(args.reports_dir, args.expected_failures_file)
 

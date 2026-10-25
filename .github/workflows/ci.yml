@@ -33,7 +33,7 @@ jobs:
 
       - name: Keep the Surefire reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: surefire-reports-legacy
           path: target/surefire-reports/
