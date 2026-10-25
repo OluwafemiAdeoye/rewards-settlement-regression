@@ -1,0 +1,9 @@
+# Cases that must fail against LegacySettlementJob (DEF-001). One case ID per line.
+# If any of these starts passing on the legacy job, the regression suite has stopped catching the defect.
+TC-01
+TC-02
+TC-03
+TC-04
+TC-05
+TC-06
+TC-07
