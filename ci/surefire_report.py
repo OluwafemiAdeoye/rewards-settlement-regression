@@ -22,17 +22,17 @@ CASE_ID = re.compile(r"tc-?(\d{2})", re.IGNORECASE)
 EXCEPTION_PREFIX = re.compile(r"^[\w.$]+(?:Error|Exception):\s*")
 
 
-def first_broken_rule(element):
-    """Return the most useful single line from a failure: the first broken assertion message."""
+def broken_rules(element):
+    """Return every broken assertion message in a failure, one per line, without exception class names."""
     text = element.get("message") or element.text or ""                    # message attribute, else body
     lines = [line.strip() for line in text.splitlines() if line.strip()]   # drop blank lines
     if len(lines) > 1 and lines[0].endswith("failures)"):                   # assertAll heading, e.g. "TC-05 (3 failures)"
-        return EXCEPTION_PREFIX.sub("", lines[1])[:220]                     # first grouped assertion
-    return EXCEPTION_PREFIX.sub("", lines[0])[:220] if lines else ""       # a single assertion
+        lines = lines[1:]                                                   # keep the grouped assertions
+    return [EXCEPTION_PREFIX.sub("", line)[:220] for line in lines[:12]]   # trimmed, capped for readability
 
 
 def load_cases(reports_dir):
-    """Return one (case_id, test_name, status, detail) tuple per test case found in the reports."""
+    """Return one (case_id, test_name, status, details) tuple per test case; details lists broken rules."""
     report_files = sorted(Path(reports_dir).glob("TEST-*.xml"))             # one XML file per test class
     if not report_files:
         sys.exit(f"No Surefire XML reports found in {reports_dir}")         # nothing ran: fail loudly
@@ -42,13 +42,13 @@ def load_cases(reports_dir):
             name = case.get("name", "")
             match = CASE_ID.search(name)
             case_id = f"TC-{match.group(1)}" if match else name             # fall back to the raw name
-            status, detail = "PASSED", ""
+            status, details = "PASSED", []
             for tag, label in (("failure", "FAILED"), ("error", "ERROR"), ("skipped", "SKIPPED")):
                 element = case.find(tag)
                 if element is not None:                                     # first non-pass outcome wins
-                    status, detail = label, first_broken_rule(element)
+                    status, details = label, broken_rules(element)
                     break
-            cases.append((case_id, name, status, detail))
+            cases.append((case_id, name, status, details))
     return sorted(cases)                                                    # TC-01 first
 
 
@@ -63,8 +63,8 @@ def render(title, cases):
         "| Case | Result | First broken rule |",
         "|---|---|---|",
     ]
-    for case_id, _name, status, detail in cases:
-        shown = f"`{detail}`" if detail else ""                              # code format keeps <...> visible
+    for case_id, _name, status, details in cases:
+        shown = f"`{details[0]}`" if details else ""                         # code format keeps <...> visible
         lines.append(f"| {case_id} | {status.lower()} | {shown.replace('|', '/')} |")
     return "\n".join(lines) + "\n"
 
@@ -80,8 +80,9 @@ def annotate(title, cases):
         return
     passed = sum(1 for case in cases if case[2] == "PASSED")
     lines = [f"{passed} of {len(cases)} cases passed."]
-    for case_id, _name, status, detail in cases:
-        lines.append(f"{case_id} {status.lower()}" + (f": {detail}" if detail else ""))
+    for case_id, _name, status, details in cases:
+        lines.append(f"{case_id} {status.lower()}")                         # one line per case
+        lines.extend(f"    {detail}" for detail in details)                 # then every broken rule, indented
     safe_title = escape_workflow_data(title).replace(":", "%3A").replace(",", "%2C")   # property escaping
     print(f"::notice title={safe_title}::{escape_workflow_data(chr(10).join(lines))}")
 
