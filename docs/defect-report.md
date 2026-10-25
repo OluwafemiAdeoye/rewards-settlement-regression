@@ -39,7 +39,9 @@ From R5, R6, R8 and R9:
 ## Actual
 
 From CI run [40164679885](https://github.com/OluwafemiAdeoye/rewards-settlement-regression/actions/runs/40164679885)
-on commit `b15a904`, repeated by the legacy check on every later run:
+on commit `b15a904`. The legacy check repeats it on every later run. Run
+[40165221266](https://github.com/OluwafemiAdeoye/rewards-settlement-regression/actions/runs/40165221266) lists
+every broken assertion:
 
 - Payment counts `{T-A1=2, T-A2=2, T-B1=2, T-B2=2, T-C1=1, T-C2=1}`, which is **100 credits instead of 60**.
   Users A and B are paid twice.

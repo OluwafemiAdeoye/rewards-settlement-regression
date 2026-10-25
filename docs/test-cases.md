@@ -15,8 +15,10 @@ path (TC-13). Every case builds its own fakes, so the order only affects how the
   on commit `32cc515`. The fixed job passes 13 of 13 on Java 17 and on Java 21, and in the same run the legacy job
   still fails exactly TC-01 to TC-07.
 - Every later run repeats both checks: [all runs](https://github.com/OluwafemiAdeoye/rewards-settlement-regression/actions/workflows/ci.yml).
-  Each run page lists every case and every broken assertion as a notice, and keeps the Surefire XML reports
-  as artifacts.
+  From run [40165221266](https://github.com/OluwafemiAdeoye/rewards-settlement-regression/actions/runs/40165221266)
+  on commit `0aba0fa` onwards, the run page lists every case and every broken assertion as a notice. The
+  figures in "What the legacy job actually did" below are taken from that run. Each run also keeps the Surefire
+  XML reports as artifacts.
 
 ## Cases
 
