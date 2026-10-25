@@ -71,7 +71,8 @@ failure must not undo or redo a payout) and R9 (a retry is safe) in [docs/busine
 ## Non-goals
 
 - A real ledger, payment rail, database or transactions. The fixture models them in memory.
-- Fixing F2 to F5 in depth. TC-08 to TC-13 guard against them, but they are not the deep fix.
+- Fixing F2 to F5 in depth. TC-04 (the payout stays after a failed notification) and TC-08 to TC-13 guard
+  against them, but they are not the deep fix.
 - Clawing back credits that were already paid twice.
 - Catching up a run that slips past the next Monday, account suspension, admin rate changes, and duplicate
   records that disagree with each other.
