@@ -23,8 +23,8 @@
     <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
 
-    <!-- Which settlement job the tests run against. Only the legacy job exists so far. -->
-    <settlement.impl>legacy</settlement.impl>
+    <!-- Which settlement job the tests run against: fixed by default, legacy with -Plegacy. -->
+    <settlement.impl>fixed</settlement.impl>
   </properties>
 
   <dependencyManagement>
@@ -80,4 +80,15 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <profile>
+      <!-- mvn test -Plegacy runs the same suite against the job as it was before DEF-001 was fixed.
+           TC-01 to TC-07 are expected to fail there. -->
+      <id>legacy</id>
+      <properties>
+        <settlement.impl>legacy</settlement.impl>
+      </properties>
+    </profile>
+  </profiles>
 </project>

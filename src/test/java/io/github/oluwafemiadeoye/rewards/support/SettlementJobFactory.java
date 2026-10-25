@@ -3,6 +3,7 @@ package io.github.oluwafemiadeoye.rewards.support;
 import io.github.oluwafemiadeoye.rewards.port.Notifier;
 import io.github.oluwafemiadeoye.rewards.port.PayoutLedger;
 import io.github.oluwafemiadeoye.rewards.port.TaskSource;
+import io.github.oluwafemiadeoye.rewards.settlement.IdempotentSettlementJob;
 import io.github.oluwafemiadeoye.rewards.settlement.LegacySettlementJob;
 import io.github.oluwafemiadeoye.rewards.settlement.SettlementJob;
 
@@ -19,17 +20,22 @@ public final class SettlementJobFactory {
     /**
      * Creates the selected settlement job wired to the given collaborators.
      *
+     * <p>The fixed job also gets a fresh notification outbox. A test reuses one job for every attempt it makes,
+     * so retries share that outbox the way production workers share a table.
+     *
      * @param taskSource the task feed
      * @param ledger     the payout ledger
      * @param notifier   the notification provider
      * @return the job under test
      */
     public static SettlementJob create(TaskSource taskSource, PayoutLedger ledger, Notifier notifier) {
-        String implementation = System.getProperty(IMPLEMENTATION_PROPERTY, "legacy");   // only one exists so far
-        if ("legacy".equals(implementation)) {                                         // the job as found
-            return new LegacySettlementJob(taskSource, ledger, notifier);
-        }
-        throw new IllegalStateException("Unknown " + IMPLEMENTATION_PROPERTY + " '" + implementation
-                + "'. Expected: legacy");                                              // fail loudly on a typo
+        String implementation = System.getProperty(IMPLEMENTATION_PROPERTY, "fixed");   // default: the fixed job
+        return switch (implementation) {
+            case "fixed" -> new IdempotentSettlementJob(                               // DEF-001 fixed
+                    taskSource, ledger, new InMemoryNotificationOutbox(), notifier);
+            case "legacy" -> new LegacySettlementJob(taskSource, ledger, notifier);    // the job as found
+            default -> throw new IllegalStateException("Unknown " + IMPLEMENTATION_PROPERTY + " '"
+                    + implementation + "'. Expected: fixed or legacy");                // fail loudly on a typo
+        };
     }
 }

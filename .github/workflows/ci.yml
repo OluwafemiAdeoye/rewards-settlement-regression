@@ -10,8 +10,40 @@ permissions:
   contents: read
 
 jobs:
-  regression:
-    name: Regression suite against the settlement job as found
+  fixed:
+    name: Fixed job passes every rule (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ['17', '21']
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+
+      - name: Set up Java ${{ matrix.java }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Run the regression suite against the fixed job
+        run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Summarise the results
+        if: always()
+        run: python3 ci/surefire_report.py summary target/surefire-reports "Fixed job on Java ${{ matrix.java }}"
+
+      - name: Keep the Surefire reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: surefire-reports-fixed-java-${{ matrix.java }}
+          path: target/surefire-reports/
+
+  legacy:
+    name: Suite still catches the legacy job (DEF-001)
     runs-on: ubuntu-latest
     steps:
       - name: Check out the code
@@ -24,12 +56,13 @@ jobs:
           java-version: '17'
           cache: maven
 
-      - name: Run the regression suite
-        run: mvn --batch-mode --no-transfer-progress verify
+      # Test failures are expected here, so they must not stop the build.
+      # A compile error still fails this step. The next step checks exactly which cases failed.
+      - name: Run the suite against the legacy job
+        run: mvn --batch-mode --no-transfer-progress test -Plegacy -Dmaven.test.failure.ignore=true
 
-      - name: Summarise the results
-        if: always()
-        run: python3 ci/surefire_report.py summary target/surefire-reports "Settlement job as found (legacy)"
+      - name: Check that exactly TC-01 to TC-07 failed
+        run: python3 ci/surefire_report.py check-legacy target/surefire-reports ci/expected-legacy-failures.txt
 
       - name: Keep the Surefire reports
         if: always()

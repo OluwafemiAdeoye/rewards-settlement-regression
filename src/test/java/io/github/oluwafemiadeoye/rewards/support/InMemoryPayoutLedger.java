@@ -36,13 +36,19 @@ public final class InMemoryPayoutLedger implements PayoutLedger {
         entries.add(entry);             // no uniqueness check: a table without a unique key on task ID
     }
 
-    /**
-     * Returns the credits recorded for one user by one window.
-     *
-     * @param userId   the user
-     * @param windowId the settlement window
-     * @return the sum of that user's entries for that window
-     */
+    @Override
+    public synchronized boolean appendIfTaskUnpaid(PayoutEntry entry) {
+        throwIfOutageInjected(entry);                                      // the database can be down for this insert too
+        boolean alreadyPaid = entries.stream()
+                .anyMatch(existing -> existing.taskId().equals(entry.taskId()));   // unique key on task ID (R6)
+        if (alreadyPaid) {
+            return false;                                                  // on conflict, do nothing
+        }
+        entries.add(entry);                                                // first payout for this task
+        return true;
+    }
+
+    @Override
     public synchronized int creditsFor(String userId, String windowId) {
         return entries.stream()
                 .filter(entry -> entry.userId().equals(userId))       // only this user's rows
